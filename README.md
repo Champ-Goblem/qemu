@@ -1,5 +1,5 @@
-         QEMU README
-         ===========
+QEMU README
+===========
 
 QEMU is a generic and open source machine & userspace emulator and
 virtualizer.
@@ -37,11 +37,10 @@ QEMU is multi-platform software intended to be buildable on all modern
 Linux platforms, OS-X, Win32 (via the Mingw64 toolchain) and a variety
 of other UNIX targets. The simple steps to build QEMU are:
 
-  mkdir build
-  cd build
-  ~~../configure~~
-  ../configure --target=aarch64-softmmu
-  make
+<pre><code>mkdir build
+cd build
+../configure --target=aarch64-softmmu
+make -j 4</code></pre>
 
 Additional information can also be found online via the QEMU website:
 
