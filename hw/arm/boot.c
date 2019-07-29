@@ -27,6 +27,7 @@
 #include "exec/address-spaces.h"
 #include "qemu/units.h"
 
+#include "hw/arm/kernelcache_loader.h"
 /* Kernel boot protocol is specified in the kernel docs
  * Documentation/arm/Booting and Documentation/arm64/booting.txt
  * They have different preferred image load offsets from system RAM base.
@@ -50,7 +51,7 @@ AddressSpace *arm_boot_address_space(ARMCPU *cpu,
      */
     int asidx;
     CPUState *cs = CPU(cpu);
-
+    
     if (arm_feature(&cpu->env, ARM_FEATURE_EL3) && info->secure_boot) {
         asidx = ARMASIdx_S;
     } else {
@@ -59,26 +60,6 @@ AddressSpace *arm_boot_address_space(ARMCPU *cpu,
 
     return cpu_get_address_space(cs, asidx);
 }
-
-typedef enum {
-    FIXUP_NONE = 0,     /* do nothing */
-    FIXUP_TERMINATOR,   /* end of insns */
-    FIXUP_BOARDID,      /* overwrite with board ID number */
-    FIXUP_BOARD_SETUP,  /* overwrite with board specific setup code address */
-    FIXUP_ARGPTR_LO,    /* overwrite with pointer to kernel args */
-    FIXUP_ARGPTR_HI,    /* overwrite with pointer to kernel args (high half) */
-    FIXUP_ENTRYPOINT_LO, /* overwrite with kernel entry point */
-    FIXUP_ENTRYPOINT_HI, /* overwrite with kernel entry point (high half) */
-    FIXUP_GIC_CPU_IF,   /* overwrite with GIC CPU interface address */
-    FIXUP_BOOTREG,      /* overwrite with boot register address */
-    FIXUP_DSB,          /* overwrite with correct DSB insn for cpu */
-    FIXUP_MAX,
-} FixupType;
-
-typedef struct ARMInsnFixup {
-    uint32_t insn;
-    FixupType fixup;
-} ARMInsnFixup;
 
 static const ARMInsnFixup bootloader_aarch64[] = {
     { 0x580000c0 }, /* ldr x0, arg ; Load the lower 32-bits of DTB */
@@ -150,7 +131,7 @@ static const ARMInsnFixup smpboot[] = {
     { 0, FIXUP_TERMINATOR }
 };
 
-static void write_bootloader(const char *name, hwaddr addr,
+void write_bootloader(const char *name, hwaddr addr,
                              const ARMInsnFixup *insns, uint32_t *fixupcontext,
                              AddressSpace *as)
 {
@@ -1063,6 +1044,13 @@ static void arm_setup_direct_kernel_boot(ARMCPU *cpu,
         if (kernel_size >= 0) {
             image_low_addr = entry;
             image_high_addr = image_low_addr + kernel_size;
+        }
+    }
+    if (kernel_size < 0) {
+        // try a MachO kernel.
+        kernel_size = arm_load_macho(info, &entry, as);
+        if (kernel_size >= 0) {
+            fprintf(stderr, "xnu\n");
         }
     }
     if (kernel_size < 0) {
