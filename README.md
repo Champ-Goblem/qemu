@@ -39,7 +39,7 @@ of other UNIX targets. The simple steps to build QEMU are:
 
 <pre><code>mkdir build
 cd build
-../configure --target=aarch64-softmmu
+../configure --target-list=aarch64-softmmu
 make -j 4</code></pre>
 
 Additional information can also be found online via the QEMU website:
