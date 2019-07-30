@@ -42,6 +42,10 @@ struct xnu_arm64_boot_args {
 };
 
 static const ARMInsnFixup bootloader_xnu_aarch64[] = {
+    //Fixup CPACR_EL1 register to allow the use of SIMD and FP functionality of arm cpus as set by iBoot
+    { 0xD2A00600 }, /* mov x0, #(3 << 20) */
+    { 0xD5181040 }, /* msr CPACR_EL1, x0 */
+    { 0xD5033FDF }, /* isb sy */
     { 0x580000c0 }, /* ldr x0, arg ; Load the lower 32-bits of DTB */
     { 0xaa1f03e1 }, /* mov x1, xzr */
     { 0xaa1f03e2 }, /* mov x2, xzr */
@@ -161,7 +165,7 @@ int arm_load_macho(struct arm_boot_info *info, hwaddr *pentry, AddressSpace *as)
             abort();
         }
     }
-    fprintf(stderr, "dtb_addr: %lx dtb_size: %lx", dtb_addr, dtb_size);
+    fprintf(stderr, "dtb_addr: %lx dtb_size: %lx\n", dtb_addr, dtb_size);
 
     //build up and add our boot args
     struct xnu_arm64_boot_args boot_args;
