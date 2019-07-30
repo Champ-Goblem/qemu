@@ -1629,7 +1629,8 @@ static void handle_msr_i(DisasContext *s, uint32_t insn,
 
     default:
     do_unallocated:
-        unallocated_encoding(s);
+        //fix unallocated encoding problem for apple cpus
+        //unallocated_encoding(s);
         return;
     }
 }
