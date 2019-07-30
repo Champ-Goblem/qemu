@@ -522,7 +522,6 @@ int arm_load_dtb(hwaddr addr, const struct arm_boot_info *binfo,
             fprintf(stderr, "Couldn't open dtb file %s\n", binfo->dtb_filename);
             goto fail;
         }
-
         fdt = load_device_tree(filename, &size);
         if (!fdt) {
             fprintf(stderr, "Couldn't open dtb file %s\n", filename);
@@ -1019,6 +1018,15 @@ static void arm_setup_direct_kernel_boot(ARMCPU *cpu,
     }
     entry = elf_entry;
     if (kernel_size < 0) {
+        // try a MachO kernel.
+        kernel_size = arm_load_macho(info, &entry, as);
+        if (kernel_size >= 0) {
+            fprintf(stderr, "xnu\n");
+            //we need to skip qemu loading the dtb for us
+            info->skip_dtb_autoload = true;
+        }
+    }
+    if (kernel_size < 0) {
         uint64_t loadaddr = info->loader_start + KERNEL_NOLOAD_ADDR;
         kernel_size = load_uimage_as(info->kernel_filename, &entry, &loadaddr,
                                      &is_linux, NULL, NULL, as);
@@ -1044,13 +1052,6 @@ static void arm_setup_direct_kernel_boot(ARMCPU *cpu,
         if (kernel_size >= 0) {
             image_low_addr = entry;
             image_high_addr = image_low_addr + kernel_size;
-        }
-    }
-    if (kernel_size < 0) {
-        // try a MachO kernel.
-        kernel_size = arm_load_macho(info, &entry, as);
-        if (kernel_size >= 0) {
-            fprintf(stderr, "xnu\n");
         }
     }
     if (kernel_size < 0) {
@@ -1082,12 +1083,14 @@ static void arm_setup_direct_kernel_boot(ARMCPU *cpu,
      * don't tell us their exact size (eg self-decompressing 32-bit kernels)
      * we might still make a bad choice here.
      */
-    info->initrd_start = info->loader_start +
-        MIN(info->ram_size / 2, 128 * 1024 * 1024);
-    if (image_high_addr) {
-        info->initrd_start = MAX(info->initrd_start, image_high_addr);
+    if (is_linux) {
+        info->initrd_start = info->loader_start +
+            MIN(info->ram_size / 2, 128 * 1024 * 1024);
+        if (image_high_addr) {
+            info->initrd_start = MAX(info->initrd_start, image_high_addr);
+        }
+        info->initrd_start = TARGET_PAGE_ALIGN(info->initrd_start);
     }
-    info->initrd_start = TARGET_PAGE_ALIGN(info->initrd_start);
 
     if (is_linux) {
         uint32_t fixupcontext[FIXUP_MAX];
@@ -1273,7 +1276,6 @@ void arm_load_kernel(ARMCPU *cpu, struct arm_boot_info *info)
 
     info->dtb_filename = qemu_opt_get(qemu_get_machine_opts(), "dtb");
     info->dtb_limit = 0;
-
     /* Load the kernel.  */
     if (!info->kernel_filename || info->firmware_loaded) {
         arm_setup_firmware_boot(cpu, info);
