@@ -8253,10 +8253,12 @@ static void arm_cpu_do_interrupt_aarch64(CPUState *cs)
     env->aarch64 = 1;
     aarch64_restore_sp(env, new_el);
 
-    env->pc = addr;
+    //env->pc = addr;
 
     qemu_log_mask(CPU_LOG_INT, "...to EL%d PC 0x%" PRIx64 " PSTATE 0x%x\n",
                   new_el, env->pc, pstate_read(env));
+
+    env->pc = addr;
 }
 
 static inline bool check_for_semihosting(CPUState *cs)
